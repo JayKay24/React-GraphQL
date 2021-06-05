@@ -1,0 +1,11 @@
+version: "3.7"
+services:
+  react-graphql-vanilla:
+    build:
+      context: ./react-graphql-github-vanilla
+      dockerfile: Dockerfile-react-vanilla
+    ports:
+      - "3000:3000"
+    container_name: react-graphql-github-vanilla
+    volumes:
+      - "./react-graphql-github-vanilla:/srv"
