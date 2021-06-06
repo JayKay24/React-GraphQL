@@ -1,5 +1,22 @@
 import React from "react";
 
+const Repository = ({ repository }) => (
+  <div>
+    <p>
+      <strong>In Repository:&nbsp;</strong>
+      <a href={repository.url}>{repository.name}</a>
+    </p>
+
+    <ul>
+      {repository.issues.edges.map((issue) => (
+        <li key={issue.node.id}>
+          <a href={issue.node.url}>{issue.node.title}</a>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
 const Organization = ({ organization, errors }) => {
   if (errors) {
     return (
@@ -16,6 +33,7 @@ const Organization = ({ organization, errors }) => {
         <strong>Issues from Organization:&nbsp;</strong>
         <a href={organization.url}>{organization.name}</a>
       </p>
+      <Repository repository={organization.repository} />
     </div>
   );
 };

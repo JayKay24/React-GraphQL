@@ -10,39 +10,57 @@ const axiosGitHubGraphhQL = axios.create({
   },
 });
 
-const GET_ORGANIZATION = `
-  {
-    organization(login: "the-road-to-learn-react") {
+const GET_ISSUES_OF_REPOSITORY = `
+  query($organization: String!, $repository: String!) {
+    organization(login: $organization) {
       name
       url
+      repository(name: $repository) {
+        name
+        url
+        issues(last: 5) {
+          edges {
+            node {
+              id
+              title
+              url
+            }
+          }
+        }
+      }
     }
-  }`;
+  }
+`;
 
 const TITLE = "React GraphQL Github Client";
+const initialPath = "the-road-to-learn-react/the-road-to-learn-react";
 
 function App() {
-  const [path, setPath] = useState(
-    "the-road-to-learn-react/the-road-to-learn-react"
-  );
+  const [path, setPath] = useState(initialPath);
+  const [urlPath, setUrlPath] = useState(initialPath);
   const [organization, setOrganization] = useState(null);
   const [errors, setErrors] = useState(null);
 
   useEffect(() => {
-    onFetchFromGitHub();
-  }, []);
+    onFetchFromGitHub(urlPath);
+  }, [urlPath]);
 
   const onSubmit = (e) => {
     e.preventDefault();
+    setUrlPath(path);
   };
 
   const onChange = (e) => {
     setPath(e.target.value);
   };
 
-  const onFetchFromGitHub = async () => {
+  const onFetchFromGitHub = async (path) => {
+    const [organization, repository] = path.split("/");
+
     try {
       const { data } = await axiosGitHubGraphhQL.post("", {
-        query: GET_ORGANIZATION,
+        query: GET_ISSUES_OF_REPOSITORY,
+        variables: { organization, repository },
       });
       setOrganization(data.data.organization);
       setErrors(data.errors);
