@@ -1,12 +1,22 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
+import { Organization } from "./Organization";
+
 const axiosGitHubGraphhQL = axios.create({
-  baseURL: "https://api/github.com/graphql",
+  baseURL: "https://api.github.com/graphql",
   headers: {
     Authorization: `bearer ${process.env.REACT_APP_GITHUB_PERSONAL_ACCESS_TOKEN}`,
   },
 });
+
+const GET_ORGANIZATION = `
+  {
+    organization(login: "the-road-to-learn-react") {
+      name
+      url
+    }
+  }`;
 
 const TITLE = "React GraphQL Github Client";
 
@@ -14,6 +24,12 @@ function App() {
   const [path, setPath] = useState(
     "the-road-to-learn-react/the-road-to-learn-react"
   );
+  const [organization, setOrganization] = useState(null);
+  const [errors, setErrors] = useState(null);
+
+  useEffect(() => {
+    onFetchFromGitHub();
+  }, []);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -21,6 +37,20 @@ function App() {
 
   const onChange = (e) => {
     setPath(e.target.value);
+  };
+
+  const onFetchFromGitHub = async () => {
+    try {
+      const { data } = await axiosGitHubGraphhQL.post("", {
+        query: GET_ORGANIZATION,
+      });
+      setOrganization(data.data.organization);
+      setErrors(data.errors);
+      console.log(data);
+    } catch (error) {
+      setErrors(error);
+      console.error(error);
+    }
   };
 
   return (
@@ -40,7 +70,11 @@ function App() {
       </form>
       <hr />
 
-      {/** Here comes the result! */}
+      {organization ? (
+        <Organization organization={organization} errors={errors} />
+      ) : (
+        <p>No information yet...</p>
+      )}
     </div>
   );
 }
