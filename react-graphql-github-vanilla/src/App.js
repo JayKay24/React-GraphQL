@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 
 import { Organization } from "./Organization";
@@ -11,20 +11,33 @@ const axiosGitHubGraphhQL = axios.create({
 });
 
 const GET_ISSUES_OF_REPOSITORY = `
-  query($organization: String!, $repository: String!) {
+  query($organization: String!, $repository: String!, $cursor: String) {
     organization(login: $organization) {
       name
       url
       repository(name: $repository) {
         name
         url
-        issues(last: 5) {
+        issues(first: 5, after: $cursor, states: [OPEN]) {
           edges {
             node {
               id
               title
               url
+              reactions(last: 3) {
+                edges {
+                  node {
+                    id
+                    content
+                  }
+                }
+              }
             }
+          }
+          totalCount
+          pageInfo {
+            endCursor
+            hasNextPage
           }
         }
       }
@@ -41,9 +54,54 @@ function App() {
   const [organization, setOrganization] = useState(null);
   const [errors, setErrors] = useState(null);
 
+  const onFetchFromGitHub = useCallback(async (path, cursor) => {
+    const resolveIssuesQuery = (queryResult, cursor) => {
+      const { data, errors } = queryResult.data;
+
+      if (!cursor) {
+        return { organization: data.organization, errors };
+      }
+
+      const { edges: oldIssues } = data.organization.repository.issues;
+      const { edges: newIssues } = data.organization.repository.issues;
+      const updatedIssues = [...oldIssues, ...newIssues];
+
+      return {
+        organization: {
+          ...data.organization,
+          repository: {
+            ...data.organization.repository,
+            issues: {
+              ...data.organization.repository.issues,
+              edges: updatedIssues,
+            },
+          },
+        },
+        errors,
+      };
+    };
+
+    const [organization, repository] = path.split("/");
+
+    try {
+      const result = await axiosGitHubGraphhQL.post("", {
+        query: GET_ISSUES_OF_REPOSITORY,
+        variables: { organization, repository, cursor },
+      });
+
+      const { errors, organization: org } = resolveIssuesQuery(result, cursor);
+      setOrganization(org);
+      setErrors(errors);
+      console.log(result);
+    } catch (error) {
+      setErrors(error);
+      console.error(error);
+    }
+  }, []);
+
   useEffect(() => {
     onFetchFromGitHub(urlPath);
-  }, [urlPath]);
+  }, [urlPath, onFetchFromGitHub]);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -54,21 +112,10 @@ function App() {
     setPath(e.target.value);
   };
 
-  const onFetchFromGitHub = async (path) => {
-    const [organization, repository] = path.split("/");
-
-    try {
-      const { data } = await axiosGitHubGraphhQL.post("", {
-        query: GET_ISSUES_OF_REPOSITORY,
-        variables: { organization, repository },
-      });
-      setOrganization(data.data.organization);
-      setErrors(data.errors);
-      console.log(data);
-    } catch (error) {
-      setErrors(error);
-      console.error(error);
-    }
+  const onFetchMoreIssues = async () => {
+    const { endCursor } = organization.repository.issues.pageInfo;
+    console.log("path endCursor", path, endCursor);
+    onFetchFromGitHub(path, endCursor);
   };
 
   return (
@@ -89,7 +136,11 @@ function App() {
       <hr />
 
       {organization ? (
-        <Organization organization={organization} errors={errors} />
+        <Organization
+          organization={organization}
+          errors={errors}
+          onFetchMoreIssues={onFetchMoreIssues}
+        />
       ) : (
         <p>No information yet...</p>
       )}

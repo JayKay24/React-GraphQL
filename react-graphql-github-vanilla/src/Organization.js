@@ -1,6 +1,16 @@
 import React from "react";
 
-const Repository = ({ repository }) => (
+const ReactionsItem = ({ reaction }) => <li>{reaction.node.content}</li>;
+
+const ReactionsList = ({ reactions }) => (
+  <ul>
+    {reactions.edges.map((reaction, idx) => (
+      <ReactionsItem key={reaction.node.id} reaction={reaction} />
+    ))}
+  </ul>
+);
+
+const Repository = ({ repository, onFetchMoreIssues }) => (
   <div>
     <p>
       <strong>In Repository:&nbsp;</strong>
@@ -11,13 +21,23 @@ const Repository = ({ repository }) => (
       {repository.issues.edges.map((issue) => (
         <li key={issue.node.id}>
           <a href={issue.node.url}>{issue.node.title}</a>
+
+          <ul>
+            <ReactionsList reactions={issue.node.reactions} />
+          </ul>
         </li>
       ))}
     </ul>
+
+    <hr />
+
+    {repository.issues.pageInfo.hasNextPage && (
+      <button onClick={onFetchMoreIssues}>More</button>
+    )}
   </div>
 );
 
-const Organization = ({ organization, errors }) => {
+const Organization = ({ organization, errors, onFetchMoreIssues }) => {
   if (errors) {
     return (
       <p>
@@ -33,7 +53,10 @@ const Organization = ({ organization, errors }) => {
         <strong>Issues from Organization:&nbsp;</strong>
         <a href={organization.url}>{organization.name}</a>
       </p>
-      <Repository repository={organization.repository} />
+      <Repository
+        repository={organization.repository}
+        onFetchMoreIssues={onFetchMoreIssues}
+      />
     </div>
   );
 };
